@@ -1,0 +1,3 @@
+check process bordergate with pidfile /opt/BorderGate/Data/bordergate.pid
+start program = "/opt/BorderGate/restart.sh"
+stop program = "/etc/init.d/bordergate stop"

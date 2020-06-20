@@ -1,0 +1,12 @@
+[client]
+protocol=TCP
+host=localhost
+port=3306
+user=bordergate
+password=********
+database=Local
+
+loose_handlersocket_port=9998
+handlersocket_plain_secret=********
+# loose_handlersocket_port_wr=9999
+# handlersocket_plain_secret_wr=********

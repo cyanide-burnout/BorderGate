@@ -1,0 +1,7 @@
+[client]
+protocol=TCP
+host=dsm.somwhere.org
+port=3306
+user=dstar
+password=********
+database=DSTAR2

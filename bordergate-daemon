@@ -1,0 +1,57 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides: bordergate
+# Required-Start: $remote_fs $syslog
+# Required-Stop: $remote_fs $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Start BorderGate at boot time
+# Description: Enable service provided by BorderGate
+### END INIT INFO
+
+NAME="BorderGate"
+DAEMON="/opt/BorderGate/bordergate"
+DIRECTORY="/opt/BorderGate"
+PIDFILE="$DIRECTORY/Data/bordergate.pid"
+ARGUMENTS="--config BorderGate.conf --pidfile $PIDFILE --daemon"
+USER=bordergate
+GROUP=bordergate
+
+[ -f $DAEMON ] || exit 0
+
+start () {
+        echo -n "Starting $NAME: "
+        start-stop-daemon --start --exec $DAEMON --chuid $USER:$GROUP --chdir $DIRECTORY --pidfile $PIDFILE -- $ARGUMENTS
+        RETVAL=$?
+        echo
+        return $RETVAL
+}
+
+stop () {
+        echo -n "Stopping $NAME: "
+        start-stop-daemon --stop --retry 5 --pidfile $PIDFILE
+        RETVAL=$?
+        echo
+}
+
+case "$1" in
+        start)
+                start
+        ;;
+        stop)
+                stop
+        ;;
+        restart)
+                stop
+                start
+        ;;
+        status)
+                status_of_proc $DAEMON $NAME
+        ;;
+        *)
+                echo "Usage: $0 {start|stop|restart|status}"
+                exit 1
+esac
+
+exit 0
