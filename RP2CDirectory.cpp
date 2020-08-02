@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <errno.h>
 
+// http://db0fhn.efi.fh-nuernberg.de/doku.php?id=projects:dstar:ircddb:ircddb-windows-g4klx
+
 #define RP2C_UPDATE_INTERVAL  300
 #define RP2C_DATE_LENGTH      32
 #define RP2C_STATE_POSITION   (RP2C_DATE_LENGTH - 1)

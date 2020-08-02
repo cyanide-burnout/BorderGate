@@ -62,12 +62,12 @@ bool G2Link::sendData(const struct sockaddr_in& address, uint16_t session, uint8
   memset(&data.trunk.header, 0, sizeof(struct TrunkHeader));
   data.header.reserved = 0;
   
-  data.trunk.header.type = DSVT_TYPE_DIGITAL_VOICE;
+  data.trunk.header.type = htole16(DSVT_TYPE_DIGITAL_VOICE);
   data.trunk.header.session = session;
   
   if (sequence == LINK_INITIAL_SEQUENCE)
   {
-    data.header.type = DSVT_TYPE_RADIO_HEADER;
+    data.header.type = htole16(DSVT_TYPE_RADIO_HEADER);
     data.trunk.header.sequence = RP2C_NUMBER_RADIO_HEADER;
     data.trunk.data.header.checkSum = CalculateCCITTCheckSum(route, sizeof(struct DStarRoute));
     memcpy(&data.trunk.data.header.route, route, sizeof(struct DStarRoute));
@@ -76,7 +76,7 @@ bool G2Link::sendData(const struct sockaddr_in& address, uint16_t session, uint8
   }
   else
   {
-    data.header.type = DSVT_TYPE_DIGITAL_VOICE;
+    data.header.type = htole16(DSVT_TYPE_DIGITAL_VOICE);
     data.trunk.header.sequence = sequence;
     memcpy(&data.trunk.data.frame, frame, sizeof(struct DStarDVFrame));
     size = DSVT_AUDIO_FRAME_SIZE;
@@ -93,7 +93,7 @@ bool G2Link::sendData(const struct sockaddr_in& address, uint16_t session, uint8
 
 void G2Link::handleData(const struct sockaddr_in& address, struct DSVT* data)
 {
-  switch (data->header.type)
+  switch (le16toh(data->header.type))
   {
     case DSVT_TYPE_RADIO_HEADER:
       observer->processData(address, data->trunk.header.session, LINK_INITIAL_SEQUENCE, &data->trunk.data.header.route, NULL);

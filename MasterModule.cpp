@@ -1,5 +1,6 @@
 #include "MasterModule.h"
 #include "DStarTools.h"
+#include <sys/eventfd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -23,12 +24,13 @@ MasterModule::MasterModule(config_setting_t* setting, GateLink* link, Observer* 
   next(next),
   name(' '),
   date(NULL),
-  handle(EOF),
+  handle1(EOF),
+  handle2(EOF),
   connection(NULL)
 {
   const char* server = NULL;
-  const char* queue = NULL;
-  const char* file = NULL;
+  const char* queue  = NULL;
+  const char* file   = NULL;
 
   if (setting != NULL)
   {
@@ -49,49 +51,71 @@ MasterModule::MasterModule(config_setting_t* setting, GateLink* link, Observer* 
 
   if (file != NULL)
   {
-    handle = open(file, O_CREAT | O_RDWR, 0644);
-    if (handle != EOF)
+    handle1 = open(file, O_CREAT | O_RDWR, 0644);
+
+    if (handle1 != EOF)
     {
-      struct stat status;
-      fstat(handle, &status);
-      if (status.st_size < sizeof(time_t))
-      {
-        time_t now = 0;
-        write(handle, &now, sizeof(time_t));
-      }
-      date = (time_t*)mmap(NULL, sizeof(time_t), PROT_READ | PROT_WRITE, MAP_SHARED, handle, 0);
+      ftruncate(handle1, sizeof(time_t));
+      date = (time_t*)mmap(NULL, sizeof(time_t), PROT_READ | PROT_WRITE, MAP_SHARED, handle1, 0);
     }
   }
 
   if (queue != NULL)
   {
-    int port = MOSQUITTO_DEFAULT_PORT;
+    int port   = MOSQUITTO_DEFAULT_PORT;
     char* host = strdup(queue);
-    // Parse port number if exists
+
     char* delimiter = strchr(host, ':');
     if (delimiter != NULL)
     {
       *delimiter = '\0';
       port = atoi(delimiter + 1);
     }
-    // Create connection
-    connection = mosquitto_new(CLIENT_IDENTIFIER, true, this);
-    int result = mosquitto_connect(connection, host, port, CLIENT_KEEPALIVE);
-    // Release string
-    free(host);
 
+    connection = mosquitto_new(CLIENT_IDENTIFIER, true, this);
+
+    mosquitto_reconnect_delay_set(connection, 2, 10, false);
     mosquitto_connect_callback_set(connection, handleConnect);
     mosquitto_message_callback_set(connection, handleMessage);
 
-    checkMosquittoError(result);
+    int result = mosquitto_connect(connection, host, port, CLIENT_KEEPALIVE);
+
+    free(host);
+
+    if (result != MOSQ_ERR_SUCCESS)
+    {
+      checkMosquittoError(result);
+      return;
+    }
+
+    mosquitto_loop_start(connection);
+
+    handle2 = eventfd(0, 0);
+    sem_init(&semaphore, 0, 0);
   }
 }
 
 MasterModule::~MasterModule()
 {
-  mosquitto_destroy(connection);
-  munmap(date, sizeof(time_t));
-  close(handle);
+  if (handle2 != EOF)
+  {
+    mosquitto_disconnect(connection);
+    sem_post(&semaphore);
+    sem_destroy(&semaphore);
+    close(handle2);
+  }
+
+  if (connection != NULL)
+  {
+    mosquitto_loop_stop(connection, false);
+    mosquitto_destroy(connection);
+  }
+
+  if (date != NULL)
+  {
+    munmap(date, sizeof(time_t));
+    close(handle1);
+  }
 }
 
 char MasterModule::getName()
@@ -104,7 +128,8 @@ bool MasterModule::isActive()
   return
     (name > ' ') &&
     (connection != NULL) &&
-    (remote.s_addr != htonl(INADDR_NONE));
+    (remote.s_addr != htonl(INADDR_NONE)) &&
+    (mosquitto_socket(connection) >= 0);
 }
 
 GateModule* MasterModule::getNext()
@@ -125,26 +150,18 @@ GateContext* MasterModule::getContext()
 void MasterModule::addDescriptors(int type, fd_set* read, fd_set* write, fd_set* except)
 {
   if (type == ROUTINE_ACTIVITY)
-  {
-    int handle = mosquitto_socket(connection);
-    FD_SET(handle, read);
-    if (mosquitto_want_write(connection))
-      FD_SET(handle, write);
-  }
+    FD_SET(handle2, read);
 }
 
 void MasterModule::processDescriptors(int type, fd_set* read, fd_set* write, fd_set* except)
 {
-  if (type == ROUTINE_ACTIVITY)
+  if ((type == ROUTINE_ACTIVITY) &&
+      (FD_ISSET(handle2, read)))
   {
-    int result = MOSQ_ERR_SUCCESS;
-    int handle = mosquitto_socket(connection);
-    if (FD_ISSET(handle, read))
-      result = mosquitto_loop_read(connection, 1);
-    if (FD_ISSET(handle, write))
-      result = mosquitto_loop_write(connection, 1);
-    if (result == MOSQ_ERR_CONN_LOST)
-      mosquitto_reconnect_async(connection);
+    uint64_t value;
+    ::read(handle2, &value, sizeof(uint64_t));
+    handleMessage((const char*)value);
+    sem_post(&semaphore);
   }
 }
 
@@ -188,8 +205,7 @@ void MasterModule::publishHeard(const struct DStarRoute& route, uint16_t number)
 
 void MasterModule::doBackgroundActivity(int type)
 {
-  if (type == ROUTINE_ACTIVITY)
-    mosquitto_loop_misc(connection);
+
 }
 
 void MasterModule::handleCommand(const char* command)
@@ -247,5 +263,6 @@ void MasterModule::handleConnect(struct mosquitto* connection, void* user, int r
 void MasterModule::handleMessage(struct mosquitto* connection, void* user, const struct mosquitto_message* message)
 {
   MasterModule* self = (MasterModule*)user;
-  self->handleMessage((const char*)message->payload);
+  write(self->handle2, message->payload, sizeof(uint64_t));
+  sem_wait(&self->semaphore);
 }

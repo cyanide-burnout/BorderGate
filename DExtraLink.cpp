@@ -163,7 +163,7 @@ bool DExtraLink::sendData(const struct sockaddr_in& address, uint16_t session, u
            route->repeater1[MODULE_NAME_POSITION] = context->getModule();
         }
       }
-  G2Link::sendData(address, session, sequence, number, route, frame);
+  return G2Link::sendData(address, session, sequence, number, route, frame);
 }
 
 

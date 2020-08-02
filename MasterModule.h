@@ -2,6 +2,7 @@
 #define MASTERMODULE_H
 
 #include <time.h>
+#include <semaphore.h>
 #include <libconfig.h>
 #include <mosquitto.h>
 #include <netinet/in.h>
@@ -47,8 +48,11 @@ class MasterModule : public GateModule
     struct in_addr remote;
     struct mosquitto* connection;
 
-    int handle;
+    int handle1;
     time_t* date;
+
+    int handle2;
+    sem_t semaphore;
 
     void handleMessage(const char* data);
 

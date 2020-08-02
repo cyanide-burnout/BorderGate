@@ -40,7 +40,7 @@ void RP2CEmulator::poll()
   struct DSTR data;
   memcpy(data.header.sign, DSTR_DATA_SIGN, RP2C_SIGN_LENGTH);
   data.header.number = htobe16(number);
-  data.header.type = DSTR_TYPE_POLL;
+  data.header.type = htole16(DSTR_TYPE_POLL);
   data.header.length = 0;
   sendto(handle, &data, sizeof(struct DSTRHeader),
     0, (struct sockaddr*)&address, sizeof(struct sockaddr_in));
@@ -57,7 +57,7 @@ void RP2CEmulator::publishHeard(const struct DStarRoute& route)
   struct DSTR data;
   memcpy(data.header.sign, DSTR_DATA_SIGN, RP2C_SIGN_LENGTH);
   data.header.number = htobe16(number);
-  data.header.type = DSTR_TYPE_LAST_HEARD;
+  data.header.type = htole16(DSTR_TYPE_LAST_HEARD);
   data.header.length = sizeof(struct HeardData);
   memcpy(data.data.heard.ownCall, route.ownCall1, LONG_CALLSIGN_LENGTH);
   memcpy(data.data.heard.repeater1, route.repeater1, LONG_CALLSIGN_LENGTH);
@@ -68,7 +68,7 @@ void RP2CEmulator::publishHeard(const struct DStarRoute& route)
 void RP2CEmulator::handleInitialMessage(const struct sockaddr_in& address, struct DSTR* data)
 {
   time_t now = time(NULL);
-  if ((data->header.type == DSTR_TYPE_POLL) && (now > time1))
+  if ((data->header.type == htole16(DSTR_TYPE_POLL)) && (now > time1))
   {
     memcpy(&this->address, &address, sizeof(struct sockaddr_in));
     number = be16toh(data->header.number) + 1;
@@ -83,7 +83,7 @@ void RP2CEmulator::handleInitialMessage(const struct sockaddr_in& address, struc
 
 void RP2CEmulator::handleControllerMessage(const struct sockaddr_in& address, struct DSTR* data)
 {
-  if (data->header.type == DSTR_TYPE_ACK)
+  if (data->header.type == htole16(DSTR_TYPE_ACK))
   {
     number = be16toh(data->header.number) + 1;
     time2 = time(NULL) + RP2C_DATA_TIMEOUT;

@@ -68,9 +68,9 @@ struct Trunk
 
 #define DSVT_DATA_SIGN            "DSVT"
 
-#define DSVT_TYPE_RADIO_HEADER    htole16(0x10)
-#define DSVT_TYPE_DIGITAL_VOICE   htole16(RP2C_TYPE_DIGITAL_VOICE)
-#define DSVT_TYPE_DIGITAL_DATA    htole16(RP2C_TYPE_DIGITAL_DATA)
+#define DSVT_TYPE_RADIO_HEADER    0x10
+#define DSVT_TYPE_DIGITAL_VOICE   RP2C_TYPE_DIGITAL_VOICE
+#define DSVT_TYPE_DIGITAL_DATA    RP2C_TYPE_DIGITAL_DATA
 
 #define DSVT_RADIO_HEADER_SIZE    (sizeof(struct DSVTHeader) + sizeof(struct TrunkHeader) + sizeof(struct DStarRadioHeader))
 #define DSVT_AUDIO_FRAME_SIZE     (sizeof(struct DSVTHeader) + sizeof(struct TrunkHeader) + sizeof(struct DStarDVFrame))
@@ -78,7 +78,7 @@ struct Trunk
 struct DSVTHeader
 {
   RP2CSign sign;      // DSVT_DATA_SIGN
-  uint16_t type;      // DSVT_TYPE_*
+  uint16_t type;      // DSVT_TYPE_* (LE16)
   uint16_t reserved;
 };
 
@@ -93,12 +93,12 @@ struct DSVT
 #define DSTR_INIT_SIGN            "INIT"
 #define DSTR_DATA_SIGN            "DSTR"
 
-#define DSTR_CLASS_SENT           htole16('s')
-#define DSTR_CLASS_REPLIED        htole16('r')
-#define DSTR_CLASS_DIGITAL_DATA   htole16(1 << 8)
-#define DSTR_CLASS_DIGITAL_VOICE  htole16(1 << 9)
-#define DSTR_CLASS_TRANSMISSION   htole16(1 << 12)
-#define DSTR_CLASS_LAST_HEARD     htole16(1 << 13)
+#define DSTR_CLASS_SENT           's'
+#define DSTR_CLASS_REPLIED        'r'
+#define DSTR_CLASS_DIGITAL_DATA   (1 << 8)
+#define DSTR_CLASS_DIGITAL_VOICE  (1 << 9)
+#define DSTR_CLASS_TRANSMISSION   (1 << 12)
+#define DSTR_CLASS_LAST_HEARD     (1 << 13)
 
 #define DSTR_TYPE_ACK             (DSTR_CLASS_REPLIED)
 #define DSTR_TYPE_POLL            (DSTR_CLASS_SENT)
@@ -111,9 +111,9 @@ struct DSVT
 struct DSTRHeader
 {
   RP2CSign sign;    // DSTR_INIT_SIGN, DSTR_DATA_SIGN
-  uint16_t number;  // packet number, BE16
-  uint16_t type;    // DSTR_TYPE_*
-  uint16_t length;  // total length of header2 + data, BE16
+  uint16_t number;  // packet number (BE16)
+  uint16_t type;    // DSTR_TYPE_* (LE16)
+  uint16_t length;  // total length of header2 + data (BE16)
 };
 
 struct HeardData
