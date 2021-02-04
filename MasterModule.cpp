@@ -263,6 +263,7 @@ void MasterModule::handleConnect(struct mosquitto* connection, void* user, int r
 void MasterModule::handleMessage(struct mosquitto* connection, void* user, const struct mosquitto_message* message)
 {
   MasterModule* self = (MasterModule*)user;
-  write(self->handle2, message->payload, sizeof(uint64_t));
+  uint64_t value = (uint64_t)message->payload;
+  write(self->handle2, &value, sizeof(uint64_t));
   sem_wait(&self->semaphore);
 }
