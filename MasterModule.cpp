@@ -88,10 +88,10 @@ MasterModule::MasterModule(config_setting_t* setting, GateLink* link, Observer* 
       return;
     }
 
-    mosquitto_loop_start(connection);
-
     handle2 = eventfd(0, 0);
     sem_init(&semaphore, 0, 0);
+
+    mosquitto_loop_start(connection);
   }
 }
 
